@@ -30,6 +30,18 @@ def _process_histories(history):
     for timepoint in history:
         timepoints.append([_parse_dates_to_datetime(timepoint.get('update_date')),
                            _parse_numbers_to_int(timepoint.get('total'))])
+                           
 
     timepoints.sort(key=lambda l: l[0])
+    return timepoints
+    
+def _process_by_month(by_month):
+    timepoints= []
+    if len(by_month) > 0 and by_month[0].get('html') is not None:
+        for timepoint in by_month:
+            timepoints.append([(timepoint.get('month'),timepoint.get('year')),timepoint.get('html'),timepoint.get("pdf")])
+    else:
+        for timepoint in by_month:
+            timepoints.append([(timepoint.get('month'),timepoint.get('year')),timepoint.get('total')])
+    
     return timepoints
