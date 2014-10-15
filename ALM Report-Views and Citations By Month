@@ -1,0 +1,104 @@
+import pyalm.pyalm as alm
+import xlwt
+
+"""
+This takes a list of PLOS article dois and will produce a excel spreadsheet with their monthly views and PDF downloads. 
+The list of articles can be in .txt format separated by linebreaks or csv where the list of articles are in separate cells along the same column.
+
+Requires:
+    
+    - The ALM python wrapper (pyalm) available from https://github.com/cameronneylon/pyalm. To account for how alm 5.0 stores history data
+you need to replace both the main pyalm and cleanup files with alternatives available from
+
+    - The excel file creator package xlwt available from https://pypi.python.org/pypi/xlwt
+    
+Need to set:
+    
+    "PATH FOR ARTICLE" on line 20 and "PATH FOR OUTPUT" including .xls on line 97
+"""
+
+articleFile = open("PATH FOR LIST OF ARTICLES")
+articleList = articleFile.readlines()
+
+#cleanup the article list if they have been separated bt commas
+tempList = []
+for a in  articleList:
+    a = a.rstrip(",\n")
+    tempList.append(a)
+articleList = tempList
+
+
+book = xlwt.Workbook(encoding="utf-8") #set up all the sheets with article titles and dois
+sheet1 = book.add_sheet("Html Views")
+sheet2 = book.add_sheet("PDF Downloads") 
+sheet3 = book.add_sheet("PMC Citations")
+sheet4 = book.add_sheet("Scopus Citations")
+sheet1.write(0, 0, "DOI")
+sheet1.write(0, 1,"Title")
+sheet2.write(0, 0, "DOI")
+sheet2.write(0, 1,"Title")
+sheet3.write(0, 0, "DOI")
+sheet3.write(0, 1,"Title")
+sheet4.write(0, 0, "DOI")
+sheet4.write(0, 1,"Title")
+
+#setting up the sheets date row
+
+oldest = min(articleList)
+oldestMet = alm.get_alm(oldest, info="detail", source="counter")
+oldestMet = oldestMet[0]
+columnForMonth = 2 # start column for month
+dateList = [] # make a list of the dates which will be used so that the data appears in the correct rows
+for date in oldestMet.sources['counter'].by_month: 
+    sheet1.write(0, columnForMonth, (str(date[0][1])+ "-" + str(date[0][0])))#all the sheets should have the same dates as the first row
+    sheet2.write(0, columnForMonth, (str(date[0][1])+ "-" + str(date[0][0])))
+    sheet3.write(0, columnForMonth, (str(date[0][1])+ "-" + str(date[0][0])))
+    sheet4.write(0, columnForMonth, (str(date[0][1])+ "-" + str(date[0][0])))
+    dateList.append(date[0])
+    columnForMonth += 1
+
+startrow = 1 # first row to have data from manuscripts
+
+for manu in articleList:
+    
+    metricList = alm.get_alm(manu, info="detail", source="counter,pubmed,scopus") #the get_alm function puts everything in a list.
+    metric = metricList[0] #The ALM wrapper works much faster if we call for the articles in bulk; however this didn't produce complete results during initial testing
+    columnForMonth = 2 # reset the columns
+    
+    columnIndexForPLOSViews = dateList.index(metric.sources['counter'].by_month[0][0]) + columnForMonth
+    sheet1.write(startrow, 0, metric.doi) #enter the data about the article currently being processed on all sheets
+    sheet1.write(startrow, 1, metric.title)
+    sheet2.write(startrow, 0, metric.doi)
+    sheet2.write(startrow, 1, metric.title)
+    sheet3.write(startrow, 0, metric.doi)
+    sheet3.write(startrow, 1, metric.title)
+    sheet4.write(startrow, 0, metric.doi)
+    sheet4.write(startrow, 1, metric.title)
+    
+    
+    for date in metric.sources['counter'].by_month: #adding the by month view data
+        sheet1.write(startrow, columnIndexForPLOSViews, date[1]) # adds the html data (in the modified alm cleanup script by month data is added as a list in the form [(month, year), html, pdf)]
+        sheet2.write(startrow, columnIndexForPLOSViews, date[2])
+        columnIndexForPLOSViews+=1
+
+    if len(metric.sources['pubmed'].by_month) != 0: # adding the pubmedcentral citations data
+        columnIndexForPubmedCitations = dateList.index(metric.sources['pubmed'].by_month[0][0]) + columnForMonth
+        for date in metric.sources['pubmed'].by_month:
+            sheet3.write(startrow, columnIndexForPubmedCitations, date[1])
+            columnIndexForPubmedCitations +=1
+    
+    if len(metric.sources['scopus'].by_month) !=0: # adding the scopus citations data
+        columnIndexForScopus =  dateList.index(metric.sources['scopus'].by_month[0][0]) + columnForMonth
+        for date in metric.sources['scopus'].by_month:
+            sheet4.write(startrow, columnIndexForScopus, date[1])
+            columnIndexForScopus +=1
+     
+    startrow+=1 # next row
+    book.save("PATH TO SAVE OUTPUT .xls") # the path to save the output
+
+
+
+
+
+
+
