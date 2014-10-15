@@ -41,8 +41,8 @@ SourceBase = dictmapper('SourceBase',
                          'metrics': to(['metrics'],
                                        lambda l: Metrics(l)
                                        if l is not None else None),
-                         'histories': to(['histories'],
-                                         cleanup._process_histories)
+                         'by_month': to(['by_month'],
+                                         cleanup._process_by_month)
                         }
 )
 
